@@ -1,0 +1,17 @@
+node_modules
+client/node_modules
+client/build
+.git
+.gitignore
+*.md
+*.log
+*.txt
+uploads/*
+!uploads/.gitkeep
+logs/*
+!logs/.gitkeep
+backup_*
+.DS_Store
+.env.local
+.vscode
+*.pid

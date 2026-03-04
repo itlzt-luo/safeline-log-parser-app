@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  log-parser:
+    build: .
+    container_name: log-parser-app
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOST=0.0.0.0
+    restart: unless-stopped
+    networks:
+      - log-parser-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/parse-default-log', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  log-parser-network:
+    driver: bridge
