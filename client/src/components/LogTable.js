@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import './LogTable.css';
 
-function LogTable({ logs }) {
+function LogTable({ logs, loadMode = 'full', logPath = null }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -13,6 +14,68 @@ function LogTable({ logs }) {
   const [selectedLog, setSelectedLog] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(50);
+  
+  // 分页模式专用状态
+  const [paginatedLogs, setPaginatedLogs] = useState([]);
+  const [pagination, setPagination] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [filterOptions, setFilterOptions] = useState(null); // 筛选器选项
+
+  // 加载分页数据（仅在优化模式下）
+  const loadPaginatedData = useCallback(async (page = 1, requestMetadata = false) => {
+    if (loadMode !== 'optimized' || !logPath) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await axios.post('/api/logs/paginated', {
+        logPath,
+        page,
+        pageSize: itemsPerPage,
+        filters: {
+          statusFilter: statusFilter !== 'all' ? statusFilter : undefined,
+          methodFilter: methodFilter !== 'all' ? methodFilter : undefined,
+          domainFilter: domainFilter !== 'all' ? domainFilter : undefined,
+          ipFilter: ipFilter !== 'all' ? ipFilter : undefined,
+          startTime: dateRange.start || undefined,
+          endTime: dateRange.end || undefined,
+          searchTerm: searchTerm || undefined
+        },
+        sortBy, // 添加排序参数
+        includeMetadata: requestMetadata // 第一次请求时获取元数据
+      });
+      
+      setPaginatedLogs(response.data.logs);
+      setPagination(response.data.pagination);
+      setCurrentPage(page);
+      
+      // 保存筛选器元数据
+      if (response.data.filterOptions) {
+        setFilterOptions(response.data.filterOptions);
+      }
+    } catch (err) {
+      setError('加载日志失败: ' + (err.response?.data?.error || err.message));
+      console.error('加载日志失败:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadMode, logPath, itemsPerPage, statusFilter, methodFilter, domainFilter, ipFilter, dateRange, searchTerm, sortBy]);
+
+  // 优化模式下，第一次加载时获取元数据
+  useEffect(() => {
+    if (loadMode === 'optimized') {
+      loadPaginatedData(1, true); // 第一次请求包含元数据
+    }
+  }, [loadMode]); // 只在loadMode改变时执行
+
+  // 优化模式下，筛选条件改变时重新加载第一页（不请求元数据）
+  useEffect(() => {
+    if (loadMode === 'optimized' && filterOptions) { // 确保已有元数据后才响应筛选变化
+      loadPaginatedData(1, false);
+    }
+  }, [statusFilter, methodFilter, domainFilter, ipFilter, dateRange, itemsPerPage, searchTerm, sortBy]); // 添加sortBy依赖
 
   // 标准化请求方法
   const normalizeMethod = (method) => {
@@ -23,20 +86,38 @@ function LogTable({ logs }) {
 
   // 获取所有唯一的请求方法（标准化后）
   const uniqueMethods = useMemo(() => {
-    const methods = [...new Set(logs.map(log => normalizeMethod(log.method)))].sort();
+    // 优化模式：使用后端返回的元数据
+    if (loadMode === 'optimized' && filterOptions?.methods) {
+      return filterOptions.methods;
+    }
+    // 全量模式：从logs计算
+    const dataSource = loadMode === 'optimized' ? paginatedLogs : logs;
+    const methods = [...new Set(dataSource.map(log => normalizeMethod(log.method)))].sort();
     // 确保常用方法在前
     const order = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'OTHER'];
     return methods.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  }, [logs]);
+  }, [logs, paginatedLogs, loadMode, filterOptions]);
 
   // 获取所有唯一的域名
   const uniqueDomains = useMemo(() => {
-    return [...new Set(logs.map(log => log.domain))].sort();
-  }, [logs]);
+    // 优化模式：使用后端返回的元数据
+    if (loadMode === 'optimized' && filterOptions?.domains) {
+      return filterOptions.domains;
+    }
+    // 全量模式：从logs计算
+    const dataSource = loadMode === 'optimized' ? paginatedLogs : logs;
+    return [...new Set(dataSource.map(log => log.domain))].sort();
+  }, [logs, paginatedLogs, loadMode, filterOptions]);
 
   // 获取所有唯一的客户端IP
   const uniqueIPs = useMemo(() => {
-    return [...new Set(logs.map(log => log.clientIp))].sort((a, b) => {
+    // 优化模式：使用后端返回的元数据
+    if (loadMode === 'optimized' && filterOptions?.clientIPs) {
+      return filterOptions.clientIPs;
+    }
+    // 全量模式：从logs计算
+    const dataSource = loadMode === 'optimized' ? paginatedLogs : logs;
+    return [...new Set(dataSource.map(log => log.clientIp))].sort((a, b) => {
       // IP地址排序
       const aParts = a.split('.').map(Number);
       const bParts = b.split('.').map(Number);
@@ -47,7 +128,7 @@ function LogTable({ logs }) {
       }
       return 0;
     });
-  }, [logs]);
+  }, [logs, paginatedLogs, loadMode, filterOptions]);
 
   // 格式化时间为友好格式
   const formatTime = (timestamp) => {
@@ -91,8 +172,14 @@ function LogTable({ logs }) {
     });
   };
 
-  // 过滤和排序日志
+  // 过滤和排序日志（仅在全量模式下）
   const filteredLogs = useMemo(() => {
+    if (loadMode === 'optimized') {
+      // 优化模式：直接使用后端返回的数据
+      return paginatedLogs;
+    }
+    
+    // 全量模式：前端过滤和排序
     let filtered = logs.filter(log => {
       // 搜索过滤
       const matchesSearch = 
@@ -157,13 +244,16 @@ function LogTable({ logs }) {
     });
 
     return filtered;
-  }, [logs, searchTerm, statusFilter, methodFilter, domainFilter, ipFilter, dateRange, sortBy]);
+  }, [logs, paginatedLogs, loadMode, searchTerm, statusFilter, methodFilter, domainFilter, ipFilter, dateRange, sortBy]);
 
-  // 分页
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentLogs = filteredLogs.slice(startIndex, endIndex);
+  // 分页（仅在全量模式下进行前端分页）
+  const totalPages = loadMode === 'optimized' 
+    ? (pagination?.totalPages || 1)
+    : Math.ceil(filteredLogs.length / itemsPerPage);
+  
+  const currentPageLogs = loadMode === 'optimized'
+    ? filteredLogs  // 优化模式：直接使用后端分页数据
+    : filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);  // 全量模式：前端分页
 
   // 状态码颜色
   const getStatusClass = (status) => {
@@ -341,80 +431,138 @@ function LogTable({ logs }) {
 
       {/* 结果统计 */}
       <div className="results-info">
-        显示 {startIndex + 1} - {Math.min(endIndex, filteredLogs.length)} / 共 {filteredLogs.length} 条记录
+        {loadMode === 'optimized' ? (
+          loading ? (
+            <span>⏳ 加载中...</span>
+          ) : error ? (
+            <span style={{ color: 'red' }}>❌ {error}</span>
+          ) : pagination ? (
+            <span>
+              显示第 {pagination.currentPage} 页 / 共 {pagination.totalPages} 页
+              （总计 {pagination.totalLogs} 条记录，每页 {pagination.pageSize} 条）
+            </span>
+          ) : (
+            <span>无数据</span>
+          )
+        ) : (
+          <span>
+            显示 {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredLogs.length)} / 共 {filteredLogs.length} 条记录
+          </span>
+        )}
       </div>
 
       {/* 表格 */}
       <div className="table-wrapper">
-        <table className="log-table">
-          <thead>
-            <tr>
-              <th>时间</th>
-              <th>域名</th>
-              <th>方法</th>
-              <th>路径</th>
-              <th>状态码</th>
-              <th>大小</th>
-              <th>客户端 IP</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentLogs.map((log, index) => (
-              <tr key={index}>
-                <td className="timestamp" title={log.timestamp}>
-                  {formatTime(log.timestampDate || log.timestamp)}
-                </td>
-                <td className="domain" title={log.domain}>{log.domain}</td>
-                <td className={`method method-${normalizeMethod(log.method).toLowerCase()}`}>
-                  {normalizeMethod(log.method)}
-                </td>
-                <td className="path" title={log.path}>{log.path}</td>
-                <td className={`status ${getStatusClass(log.status)}`}>{log.status}</td>
-                <td className="size">{formatSize(log.size)}</td>
-                <td className="ip">{log.clientIp}</td>
-                <td className="actions">
-                  <button 
-                    className="detail-btn"
-                    onClick={() => handleViewDetails(log)}
-                    title="查看详情"
-                  >
-                    🔍
-                  </button>
-                </td>
+        {loadMode === 'optimized' && loading ? (
+          <div className="loading-container" style={{ textAlign: 'center', padding: '40px' }}>
+            <div className="loading-spinner">⏳</div>
+            <p>正在加载日志数据...</p>
+          </div>
+        ) : loadMode === 'optimized' && error ? (
+          <div className="error-container" style={{ textAlign: 'center', padding: '40px', color: 'red' }}>
+            <p>❌ {error}</p>
+            <button onClick={() => loadPaginatedData(currentPage)}>重试</button>
+          </div>
+        ) : (
+          <table className="log-table">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>域名</th>
+                <th>方法</th>
+                <th>路径</th>
+                <th>状态码</th>
+                <th>大小</th>
+                <th>客户端 IP</th>
+                <th>操作</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {currentPageLogs.map((log, index) => (
+                <tr key={index}>
+                  <td className="timestamp" title={log.timestamp}>
+                    {formatTime(log.timestampDate || log.timestamp)}
+                  </td>
+                  <td className="domain" title={log.domain}>{log.domain}</td>
+                  <td className={`method method-${normalizeMethod(log.method).toLowerCase()}`}>
+                    {normalizeMethod(log.method)}
+                  </td>
+                  <td className="path" title={log.path}>{log.path}</td>
+                  <td className={`status ${getStatusClass(log.status)}`}>{log.status}</td>
+                  <td className="size">{formatSize(log.size)}</td>
+                  <td className="ip">{log.clientIp}</td>
+                  <td className="actions">
+                    <button 
+                      className="detail-btn"
+                      onClick={() => handleViewDetails(log)}
+                      title="查看详情"
+                    >
+                      🔍
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* 分页 */}
       {totalPages > 1 && (
         <div className="pagination">
           <button
-            onClick={() => setCurrentPage(1)}
-            disabled={currentPage === 1}
+            onClick={() => {
+              if (loadMode === 'optimized') {
+                loadPaginatedData(1);
+              } else {
+                setCurrentPage(1);
+              }
+            }}
+            disabled={currentPage === 1 || (loadMode === 'optimized' && loading)}
           >
             首页
           </button>
           <button
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
+            onClick={() => {
+              if (loadMode === 'optimized') {
+                loadPaginatedData(Math.max(1, currentPage - 1));
+              } else {
+                setCurrentPage(prev => Math.max(1, prev - 1));
+              }
+            }}
+            disabled={currentPage === 1 || (loadMode === 'optimized' && loading)}
           >
             上一页
           </button>
           <span className="page-info">
-            第 {currentPage} / {totalPages} 页 （共 {filteredLogs.length} 条，每页 {itemsPerPage} 条）
+            第 {currentPage} / {totalPages} 页 
+            {loadMode === 'optimized' && pagination ? (
+              ` （共 ${pagination.totalLogs} 条，每页 ${pagination.pageSize} 条）`
+            ) : (
+              ` （共 ${filteredLogs.length} 条，每页 ${itemsPerPage} 条）`
+            )}
           </span>
           <button
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => {
+              if (loadMode === 'optimized') {
+                loadPaginatedData(Math.min(totalPages, currentPage + 1));
+              } else {
+                setCurrentPage(prev => Math.min(totalPages, prev + 1));
+              }
+            }}
+            disabled={currentPage === totalPages || (loadMode === 'optimized' && loading)}
           >
             下一页
           </button>
           <button
-            onClick={() => setCurrentPage(totalPages)}
-            disabled={currentPage === totalPages}
+            onClick={() => {
+              if (loadMode === 'optimized') {
+                loadPaginatedData(totalPages);
+              } else {
+                setCurrentPage(totalPages);
+              }
+            }}
+            disabled={currentPage === totalPages || (loadMode === 'optimized' && loading)}
           >
             末页
           </button>

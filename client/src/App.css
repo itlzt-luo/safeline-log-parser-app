@@ -178,6 +178,79 @@
   font-size: 1.2rem;
 }
 
+/* 大文件模式提示 */
+.large-file-notice {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border-left: 4px solid #667eea;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.1);
+  animation: fadeInUp 0.5s ease;
+}
+
+.notice-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+  color: #667eea;
+  font-size: 1.1rem;
+}
+
+.notice-icon {
+  font-size: 1.5rem;
+}
+
+.notice-content {
+  color: #555;
+  line-height: 1.6;
+}
+
+.notice-content p {
+  margin: 0.5rem 0;
+}
+
+.notice-content strong {
+  color: #667eea;
+  font-weight: 600;
+}
+
+/* 优化模式下的日志详情提示 */
+.optimized-mode-message {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%);
+  border: 2px dashed rgba(255, 193, 7, 0.3);
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.optimized-mode-message h3 {
+  color: #f57c00;
+  margin-bottom: 1rem;
+  font-size: 1.8rem;
+}
+
+.optimized-mode-message p {
+  color: #666;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  margin: 0.8rem 0;
+}
+
+/* 禁用的标签页 */
+.tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #e0e0e0;
+}
+
+.tab:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 @media (max-width: 768px) {
   .App-header h1 {
     font-size: 1.8rem;
@@ -189,5 +262,25 @@
 
   .tabs {
     flex-direction: column;
+  }
+
+  .large-file-notice {
+    padding: 1rem;
+  }
+
+  .notice-header {
+    font-size: 1rem;
+  }
+
+  .optimized-mode-message {
+    padding: 2rem 1rem;
+  }
+
+  .optimized-mode-message h3 {
+    font-size: 1.4rem;
+  }
+
+  .optimized-mode-message p {
+    font-size: 1rem;
   }
 }

@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
 
 const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0'];
 
-function Dashboard({ statistics, logs = [] }) {
+function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = null }) {
   // 筛选状态
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [statusFilter, setStatusFilter] = useState('all');
@@ -21,17 +21,32 @@ function Dashboard({ statistics, logs = [] }) {
 
   // 获取唯一的方法和域名
   const uniqueMethods = useMemo(() => {
+    // 优化模式：使用后端返回的元数据
+    if (loadMode === 'optimized' && statistics?.filterOptions?.methods) {
+      return statistics.filterOptions.methods;
+    }
+    // 全量模式：从logs计算
     const methods = [...new Set(logs.map(log => normalizeMethod(log.method)))].sort();
     const order = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'OTHER'];
     return methods.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  }, [logs]);
+  }, [logs, statistics, loadMode]);
 
   const uniqueDomains = useMemo(() => {
+    // 优化模式：使用后端返回的元数据
+    if (loadMode === 'optimized' && statistics?.filterOptions?.domains) {
+      return statistics.filterOptions.domains;
+    }
+    // 全量模式：从logs计算
     return [...new Set(logs.map(log => log.domain))].sort();
-  }, [logs]);
+  }, [logs, statistics, loadMode]);
 
   // 获取唯一的客户端IP
   const uniqueIPs = useMemo(() => {
+    // 优化模式：使用后端返回的元数据
+    if (loadMode === 'optimized' && statistics?.filterOptions?.clientIPs) {
+      return statistics.filterOptions.clientIPs;
+    }
+    // 全量模式：从logs计算
     return [...new Set(logs.map(log => log.clientIp))].sort((a, b) => {
       // IP地址排序
       const aParts = a.split('.').map(Number);
@@ -43,7 +58,7 @@ function Dashboard({ statistics, logs = [] }) {
       }
       return 0;
     });
-  }, [logs]);
+  }, [logs, statistics, loadMode]);
 
   // 过滤日志
   const filteredLogs = useMemo(() => {
@@ -144,7 +159,9 @@ function Dashboard({ statistics, logs = [] }) {
   }, [filteredLogs]);
 
   // 使用过滤后的统计数据
-  const currentStats = logs.length > 0 ? filteredStatistics : statistics;
+  // 优化模式：使用后端返回的统计数据（后端已应用筛选）
+  // 全量模式：logs存在时使用前端计算的filteredStatistics，否则使用原始statistics
+  const currentStats = loadMode === 'optimized' ? statistics : (logs.length > 0 ? filteredStatistics : statistics);
 
   // 处理IP柱状图点击事件
   const handleIPBarClick = (data) => {
@@ -189,6 +206,12 @@ function Dashboard({ statistics, logs = [] }) {
 
   // 准备时间序列数据
   const timeSeriesData = useMemo(() => {
+    // 优化模式：直接使用后端返回的时间序列数据
+    if (loadMode === 'optimized' && currentStats?.timeSeriesData) {
+      return currentStats.timeSeriesData;
+    }
+    
+    // 全量模式：从日志中计算时间序列
     if (filteredLogs.length === 0) return [];
 
     // 按时间排序
@@ -321,7 +344,7 @@ function Dashboard({ statistics, logs = [] }) {
       // 简单的字符串排序（对于时间格式基本够用）
       return a.time.localeCompare(b.time);
     });
-  }, [filteredLogs]);
+  }, [filteredLogs, loadMode, currentStats]);
 
   // 重置筛选
   const handleResetFilters = () => {
@@ -335,8 +358,38 @@ function Dashboard({ statistics, logs = [] }) {
   // 检查是否有活动筛选
   const hasActiveFilters = dateRange.start || dateRange.end || statusFilter !== 'all' || methodFilter !== 'all' || domainFilter !== 'all' || ipFilter !== 'all';
 
+  // 优化模式：当筛选条件改变时通知父组件
+  useEffect(() => {
+    if (loadMode === 'optimized' && onFilterChange && hasActiveFilters) {
+      const filters = {
+        statusFilter,
+        methodFilter,
+        domainFilter,
+        ipFilter,
+        startTime: dateRange.start || undefined,
+        endTime: dateRange.end || undefined
+      };
+      
+      // 使用防抖，避免频繁请求
+      const timer = setTimeout(() => {
+        onFilterChange(filters);
+      }, 800); // 800ms 防抖
+
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadMode, statusFilter, methodFilter, domainFilter, ipFilter, dateRange.start, dateRange.end, hasActiveFilters]);
+
   return (
     <div className="dashboard">
+      {/* 优化模式提示 */}
+      {loadMode === 'optimized' && (
+        <div className="optimized-mode-banner">
+          <span>⚡</span>
+          <span>筛选条件改变后将自动重新分析日志（约需1-3秒）</span>
+        </div>
+      )}
+      
       {/* 筛选器区域 */}
       <div className="dashboard-filters">
         <div className="filter-header">

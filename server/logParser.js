@@ -1,6 +1,12 @@
 /**
  * 日志解析器
- * 解析格式: IP | user | timestamp | "domain" | "request" | status | size | "referer" | "user-agent" "client-ip"
+ * 解析格式: IP | user | timestamp | "domai  parseLine(line) {
+    try {
+      // 使用正则表达式解析日志行
+      // 格式: user-agent 后面是空格,client-ip 在引号外
+      const pattern = /^(\S+)\s+\|\s+(\S+)\s+\|\s+([^\|]+)\|\s+"([^"]+)"\s+\|\s+"([^"]+)"\s+\|\s+(\d+)\s+\|\s+(\d+)\s+\|\s+"([^"]*)"\s+\|\s+"([^"]+)"\s+"([^"]+)"$/;
+      
+      const match = line.match(pattern);equest" | status | size | "referer" | "user-agent" "client-ip"
  */
 
 class LogParser {
