@@ -40,3 +40,7 @@ Thumbs.db
 # 其他
 coverage/
 .nyc_output/
+
+# 数据库文件
+server/data/*.xdb
+

@@ -19,6 +19,7 @@ class LogAnalyzer {
         statusCodes: {},
         methods: {},
         clientIPs: {},
+        locations: {},
         domains: {},
         paths: {},
         totalSize: 0,
@@ -64,8 +65,11 @@ class LogAnalyzer {
           const method = log.method.toUpperCase().trim();
           stats.methods[method] = (stats.methods[method] || 0) + 1;
           
-          // 客户端IP
+          // 客户端IP及归属地
           stats.clientIPs[log.clientIp] = (stats.clientIPs[log.clientIp] || 0) + 1;
+          if (log.location) {
+            stats.locations[log.location] = (stats.locations[log.location] || 0) + 1;
+          }
           
           // 域名
           stats.domains[log.domain] = (stats.domains[log.domain] || 0) + 1;
@@ -137,6 +141,10 @@ class LogAnalyzer {
             .sort((a, b) => b[1] - a[1])
             .slice(0, 10)
             .map(([ip, count]) => ({ ip, count })),
+          topLocations: Object.entries(stats.locations)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+            .map(([location, count]) => ({ location, count })),
           topDomains: Object.entries(stats.domains)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 10)
@@ -452,6 +460,7 @@ class LogAnalyzer {
       const matchesSearch = 
         log.path.toLowerCase().includes(term) ||
         log.clientIp.includes(term) ||
+        (log.location && log.location.toLowerCase().includes(term)) ||
         log.method.toLowerCase().includes(term) ||
         log.domain.toLowerCase().includes(term);
       if (!matchesSearch) return false;

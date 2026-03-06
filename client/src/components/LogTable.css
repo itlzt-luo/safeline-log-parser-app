@@ -323,6 +323,15 @@
   font-size: 0.9rem;
 }
 
+.location {
+  color: #718096;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 表格中可点击的单元格样式 */
 .clickable-cell {
   cursor: pointer;

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Search, RotateCcw, Calendar, PieChart as PieChartIcon, Wrench, Globe, Monitor, Info, BarChart2, AlertTriangle, Box, TrendingUp, Flame, Users, Lightbulb } from 'lucide-react';
+import { Search, RotateCcw, Calendar, PieChart as PieChartIcon, Wrench, Globe, Monitor, Info, BarChart2, AlertTriangle, Box, TrendingUp, Flame, Users, Lightbulb, MapPin } from 'lucide-react';
 import './Dashboard.css';
 
 const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0'];
@@ -230,6 +230,12 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
     name: item.ip,
     count: item.count
   }));
+
+  // 准备 Top 归属地数据
+  const locationData = currentStats.topLocations ? currentStats.topLocations.map(item => ({
+    name: item.location,
+    count: item.count
+  })) : [];
 
   // 准备域名数据
   const domainData = currentStats.topDomains ? currentStats.topDomains.map(item => ({
@@ -908,6 +914,37 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
                   name="请求次数"
                   onClick={handleIPBarClick}
                   cursor="pointer"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={60}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Top 10 归属地 */}
+        <div className="chart-card full-width">
+          <h3><MapPin size={20} /> Top 10 来源地域</h3>
+          {locationData.length === 0 ? (
+            <div className="no-data-message">暂无数据</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={locationData} margin={{ left: 10, right: 30, top: 20, bottom: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{fontSize: 12}} 
+                  angle={-30} 
+                  textAnchor="end" 
+                  height={60} 
+                />
+                <YAxis />
+                <Tooltip formatter={(value) => [value.toLocaleString(), '请求次数']} />
+                <Legend />
+                <Bar 
+                  dataKey="count" 
+                  fill="#ff9a9e" 
+                  name="请求次数"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={60}
                 />

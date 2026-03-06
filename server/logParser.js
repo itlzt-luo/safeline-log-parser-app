@@ -1,12 +1,8 @@
+const { getCleanLocation } = require('./ipLookup');
+
 /**
  * 日志解析器
- * 解析格式: IP | user | timestamp | "domai  parseLine(line) {
-    try {
-      // 使用正则表达式解析日志行
-      // 格式: user-agent 后面是空格,client-ip 在引号外
-      const pattern = /^(\S+)\s+\|\s+(\S+)\s+\|\s+([^\|]+)\|\s+"([^"]+)"\s+\|\s+"([^"]+)"\s+\|\s+(\d+)\s+\|\s+(\d+)\s+\|\s+"([^"]*)"\s+\|\s+"([^"]+)"\s+"([^"]+)"$/;
-      
-      const match = line.match(pattern);equest" | status | size | "referer" | "user-agent" "client-ip"
+ * 解析格式: IP | user | timestamp | "domain" | "request" | status | size | "referer" | "user-agent" "client-ip"
  */
 
 class LogParser {
@@ -62,7 +58,8 @@ class LogParser {
       // 兼容两种格式: 
       // 1. 包含 clientIp 的: ... | "user-agent" "client-ip"
       // 2. 不包含 clientIp 的 (Nginx默认/部分场景): ... | "user-agent"
-      const pattern = /^(\S+)\s+\|\s+(\S+)\s+\|\s+([^\|]+)\|\s+"([^"]+)"\s+\|\s+"([^"]+)"\s+\|\s+(\d+)\s+\|\s+(\d+)\s+\|\s+"([^"]*)"\s+\|\s+"([^"]+)"(?:\s+"([^"]+)")?$/;
+      // 注意: ip 和 user 字段可能包含逗号空格（如多个IP），所以不能只用 \S+
+      const pattern = /^([^|]+)\s+\|\s+([^|]+)\s+\|\s+([^\|]+)\|\s+"([^"]+)"\s+\|\s+"([^"]+)"\s+\|\s+(\d+)\s+\|\s+(\d+)\s+\|\s+"([^"]*)"\s+\|\s+"([^"]+)"(?:\s+"([^"]+)")?$/;
       
       const match = line.match(pattern);
       
@@ -74,7 +71,17 @@ class LogParser {
       const [, ip, user, timestamp, domain, request, status, size, referer, userAgent, rawClientIp] = match;
       
       // 如果没有 clientIp，默认使用前面的 ip 字段
-      const clientIp = rawClientIp || ip;
+      let clientIp = rawClientIp || ip;
+      
+      // 处理由于 X-Forwarded-For 导致的多个 IP 逗号分隔的情况，只取第一个 IP
+      if (clientIp && clientIp.includes(',')) {
+        clientIp = clientIp.split(',')[0].trim();
+      }
+      
+      let cleanIp = ip;
+      if (cleanIp && cleanIp.includes(',')) {
+        cleanIp = cleanIp.split(',')[0].trim();
+      }
       
       // 解析请求部分 (方法 路径 协议)
       const requestParts = request.match(/^(\S+)\s+(\S+)\s+(\S+)$/);
@@ -89,7 +96,7 @@ class LogParser {
       const parsedDate = this.parseTimestamp(timestamp.trim());
 
       return {
-        ip: ip.trim(),
+        ip: cleanIp.trim(),
         user: user.trim(),
         timestamp: timestamp.trim(),
         timestampDate: parsedDate,
@@ -102,6 +109,7 @@ class LogParser {
         referer: referer.trim(),
         userAgent: userAgent.trim(),
         clientIp: clientIp.trim(),
+        location: getCleanLocation(clientIp.trim()),
         fullRequest: request.trim()
       };
     } catch (error) {
@@ -156,6 +164,7 @@ class LogParser {
         methods: {},
         topPaths: [],
         topClientIPs: [],
+        topLocations: [],
         topDomains: [],
         errorRate: 0,
         avgResponseSize: 0
@@ -166,6 +175,7 @@ class LogParser {
     const methods = {};
     const paths = {};
     const clientIPs = {};
+    const locations = {};
     const domains = {};
     let totalSize = 0;
     let errorCount = 0;
@@ -181,8 +191,11 @@ class LogParser {
       // 统计路径
       paths[log.path] = (paths[log.path] || 0) + 1;
       
-      // 统计客户端 IP
+      // 统计客户端 IP 和归属地
       clientIPs[log.clientIp] = (clientIPs[log.clientIp] || 0) + 1;
+      if (log.location) {
+        locations[log.location] = (locations[log.location] || 0) + 1;
+      }
       
       // 统计域名
       domains[log.domain] = (domains[log.domain] || 0) + 1;
@@ -211,6 +224,12 @@ class LogParser {
       .slice(0, 10)
       .map(([ip, count]) => ({ ip, count }));
 
+    // 获取 Top 10 归属地
+    const topLocations = Object.entries(locations)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([location, count]) => ({ location, count }));
+
     // 获取 Top 10 域名
     const topDomains = Object.entries(domains)
       .sort((a, b) => b[1] - a[1])
@@ -224,6 +243,7 @@ class LogParser {
       methods: methods,
       topPaths: topPaths,
       topClientIPs: topClientIPs,
+      topLocations: topLocations,
       topDomains: topDomains,
       errorRate: ((errorCount / logs.length) * 100).toFixed(2),
       avgResponseSize: Math.round(totalSize / logs.length)

@@ -187,6 +187,7 @@ function LogTable({ logs, loadMode = 'full', logPath = null }) {
       const matchesSearch = 
         log.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
         log.clientIp.includes(searchTerm) ||
+        (log.location && log.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
         log.method.toLowerCase().includes(searchTerm.toLowerCase()) ||
         log.domain.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -422,7 +423,7 @@ function LogTable({ logs, loadMode = 'full', logPath = null }) {
           <Search size={16} className="search-icon" style={{ position: 'absolute', left: '10px', top: '10px', color: '#888' }} />
           <input
             type="text"
-            placeholder="搜索路径、IP、方法或域名..."
+            placeholder="搜索路径、IP、归属地、方法或域名..."
             value={searchTerm}
             style={{ paddingLeft: '32px' }}
             onChange={(e) => {
@@ -656,6 +657,7 @@ function LogTable({ logs, loadMode = 'full', logPath = null }) {
                 <th>状态码</th>
                 <th>大小</th>
                 <th>客户端 IP</th>
+                <th>归属地</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -694,6 +696,9 @@ function LogTable({ logs, loadMode = 'full', logPath = null }) {
                     onClick={() => handleIpClick(log.clientIp)}
                   >
                     {log.clientIp}
+                  </td>
+                  <td className="location">
+                    {log.location || '-'}
                   </td>
                   <td className="actions">
                     <button 
@@ -863,6 +868,10 @@ function LogTable({ logs, loadMode = 'full', logPath = null }) {
                   >
                     {selectedLog.clientIp} <Filter size={14} style={{verticalAlign: 'middle', marginLeft: '4px'}} />
                   </span>
+                </div>
+                <div className="detail-item">
+                  <span className="label">IP 归属地:</span>
+                  <span className="value">{selectedLog.location || '-'}</span>
                 </div>
                 <div className="detail-item">
                   <span className="label">User-Agent:</span>
