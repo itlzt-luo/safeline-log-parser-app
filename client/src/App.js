@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
 import Dashboard from './components/Dashboard';
@@ -98,30 +98,6 @@ function App() {
     }
   };
 
-  // 处理优化模式下的筛选条件变化
-  const handleOptimizedFilterChange = useCallback(async (filters) => {
-    if (loadMode !== 'optimized' || !currentLogPath) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const statsResponse = await axios.post('/api/logs/analyze', {
-        logPath: currentLogPath,
-        filters
-      });
-      
-      setStatistics(statsResponse.data.statistics);
-    } catch (err) {
-      setError(err.response?.data?.error || '重新分析日志失败');
-      console.error('重新分析日志失败:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [loadMode, currentLogPath]);
-
   return (
     <div className="App">
       <header className="App-header">
@@ -187,7 +163,7 @@ function App() {
                   statistics={statistics} 
                   logs={logs}
                   loadMode={loadMode}
-                  onFilterChange={loadMode === 'optimized' ? handleOptimizedFilterChange : null}
+                  onFilterChange={null}
                 />
               )}
               {activeTab === 'logs' && (

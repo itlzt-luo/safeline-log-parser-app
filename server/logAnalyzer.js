@@ -432,8 +432,20 @@ class LogAnalyzer {
     // 时间范围筛选
     if (filters.startTime || filters.endTime) {
       const logDate = new Date(log.timestampDate || log.timestamp);
-      if (filters.startTime && logDate < new Date(filters.startTime)) return false;
-      if (filters.endTime && logDate > new Date(filters.endTime)) return false;
+      
+      // 开始时间：设置为当天 00:00:00
+      if (filters.startTime) {
+        const startDate = new Date(filters.startTime);
+        startDate.setHours(0, 0, 0, 0);
+        if (logDate < startDate) return false;
+      }
+      
+      // 结束时间：设置为当天 23:59:59.999
+      if (filters.endTime) {
+        const endDate = new Date(filters.endTime);
+        endDate.setHours(23, 59, 59, 999);
+        if (logDate > endDate) return false;
+      }
     }
 
     return true;

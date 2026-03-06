@@ -6,14 +6,25 @@
 
 - 📁 支持上传日志文件（.txt, .log 格式）
 - 📄 可加载项目中的默认 log.txt 文件
-- � 支持指定服务器文件路径加载
-- �📊 实时数据统计和可视化
+- 🗂️ 支持指定服务器文件路径加载
+- 📊 实时数据统计和可视化
 - 🔍 强大的日志搜索和过滤功能
   - 全文搜索（路径、IP、方法、域名）
   - 状态码过滤（2xx、3xx、4xx、5xx）
   - 请求方法过滤（GET、POST、PUT、DELETE 等）
+  - 域名过滤
+  - IP 地址过滤
   - 日期范围筛选
-- 📈 多维度排序
+- ⚡ **快速筛选功能**（新功能）
+  - 表格中直接点击域名、IP、方法、状态码快速筛选
+  - 详情页也支持点击筛选
+  - 智能关联分析，无需手动操作筛选器
+  - 悬停提示，一键应用筛选条件
+- � **智能时间选择**（新功能）
+  - 6个快捷日期按钮（今天、昨天、最近7天、最近30天、本月、上月）
+  - 优化的日期选择器界面，渐变背景设计
+  - 一键选择常用时间范围，省去繁琐的日期选择
+- �📈 多维度排序
   - 时间排序（升序/降序）
   - 大小排序（升序/降序）
   - 状态码排序（升序/降序）
@@ -68,34 +79,81 @@ cd ..
 
 ### 2. 启动应用
 
-#### 开发模式（同时启动前后端）
+#### 方式一：开发模式（推荐）
+
+同时启动前后端服务，适合开发和调试：
 
 ```bash
 npm run dev
 ```
 
-#### 或者分别启动
+**启动后你会看到：**
+- ✅ `[0] 服务器运行在端口 3001` - 后端服务启动成功
+- ✅ `[1] Compiled with warnings` - 前端编译完成（可能有警告但不影响使用）
+- ✅ 浏览器自动打开 http://localhost:3000
+
+**常见警告说明：**
+- ESLint 警告：代码质量提示，不影响功能
+- Deprecation 警告：依赖包的兼容性提示，可忽略
+- 日志解析警告：某些日志格式不匹配，正常现象
+
+#### 方式二：分别启动
+
+在两个终端中分别启动前后端：
 
 ```bash
-# 启动后端服务器（终端 1）
+# 终端 1 - 启动后端服务器
 npm run server
 
-# 启动前端开发服务器（终端 2）
+# 终端 2 - 启动前端开发服务器
 npm run client
+```
+
+#### 方式三：生产模式（使用 PM2）
+
+使用 PM2 进程管理器启动生产环境：
+
+```bash
+# 安装 PM2（如果未安装）
+npm install -g pm2
+
+# 启动应用
+pm2 start config/ecosystem.config.js
+
+# 查看状态
+pm2 status
+
+# 查看日志
+pm2 logs log-parser-app
+
+# 停止应用
+pm2 stop log-parser-app
+
+# 重启应用
+pm2 restart log-parser-app
 ```
 
 ### 3. 访问应用
 
-- 前端页面: http://localhost:3000
-- 后端 API: http://localhost:3001
+启动成功后，在浏览器中访问：
+
+- 🎨 **前端界面**: http://localhost:3000
+- 🔌 **后端 API**: http://localhost:3001/api
+- 📊 **默认日志解析**: http://localhost:3001/api/parse-default-log
+
+### 4. 停止服务
+
+- **开发模式**: 在终端按 `Ctrl + C`
+- **PM2 模式**: 运行 `pm2 stop log-parser-app`
 
 ## 项目结构 📁
 
 ```
-log-parser-app/
+safeline-log-parser-app/
 ├── server/                 # 后端代码
 │   ├── index.js           # Express 服务器
-│   └── logParser.js       # 日志解析逻辑
+│   ├── logParser.js       # 日志解析逻辑
+│   └── logAnalyzer.js     # 日志分析逻辑
 ├── client/                # 前端代码
 │   ├── public/            # 静态资源
 │   └── src/
@@ -103,12 +161,35 @@ log-parser-app/
 │       │   ├── Dashboard.js      # 数据统计面板
 │       │   ├── LogTable.js       # 日志表格
 │       │   └── FileUpload.js     # 文件上传
+│       ├── hooks/         # 自定义 Hooks
 │       ├── App.js         # 主应用组件
 │       └── index.js       # 入口文件
+├── config/                # 配置文件
+│   ├── ecosystem.config.js  # PM2 配置
+│   ├── nginx.conf           # Nginx 配置
+│   └── README.md            # 配置说明
+├── scripts/               # 脚本工具
+│   ├── deploy.sh            # 部署脚本
+│   ├── update.sh            # 更新脚本
+│   ├── cleanup.sh           # 清理脚本
+│   ├── package.sh           # 打包脚本
+│   ├── test-parser.js       # 解析器测试
+│   ├── test-large-file-api.sh  # 大文件 API 测试
+│   └── README.md            # 脚本说明
+├── docs/                  # 文档目录
+│   ├── INDEX.md             # 文档索引
+│   ├── USAGE.md             # 使用指南
+│   ├── DEPLOY.md            # 部署文档
+│   ├── QUICK_DEPLOY.md      # 快速部署
+│   ├── FILTERS_QUICK_GUIDE.md  # 过滤器指南
+│   ├── HISTORY_FEATURE.md      # 历史功能说明
+│   └── LARGE_FILE_USAGE_GUIDE.md  # 大文件使用指南
+├── logs/                  # 日志文件
 ├── uploads/               # 上传文件临时目录
-├── log.txt               # 示例日志文件
+├── Dockerfile             # Docker 构建文件
+├── docker-compose.yml     # Docker Compose 配置
 ├── package.json          # 项目配置
-└── README.md             # 项目说明
+└── README.md             # 项目说明（本文件）
 ```
 
 ## API 接口 🔌
@@ -206,6 +287,20 @@ NODE_ENV=production npm run server
 
 应用将在 http://localhost:3001 上运行，并提供构建后的 React 应用。
 
+## 目录说明 📂
+
+### 📚 docs/ - 文档目录
+包含所有项目文档，包括使用指南、部署文档、功能说明等。查看 [docs/INDEX.md](./docs/INDEX.md) 获取完整文档列表。
+
+### 🔧 config/ - 配置目录
+存放 PM2、Nginx 等配置文件。查看 [config/README.md](./config/README.md) 了解各配置文件的用途。
+
+### 📜 scripts/ - 脚本目录
+包含部署、测试、维护等各类脚本工具。查看 [scripts/README.md](./scripts/README.md) 了解各脚本的使用方法。
+
+### 📝 logs/ - 日志目录
+存放应用运行日志和测试日志文件。该目录下的 `.log` 和 `.txt` 文件会被 git 忽略。
+
 ## 开发说明 💻
 
 ### 添加新功能
@@ -225,6 +320,16 @@ NODE_ENV=production npm run server
 - 后端流式处理大文件（可进一步优化）
 
 ## 最近更新 🆕
+
+### v1.2.0 (2026-03-05)
+- ✅ **时间选择器优化** - 新增6个快捷日期按钮（今天、昨天、最近7/30天、本月、上月）
+- ✅ **列表快速筛选** - 表格中直接点击域名、IP、方法、状态码即可筛选
+- ✅ **详情页快速筛选** - 详情页也支持点击字段快速筛选
+- ✅ **视觉优化** - 可点击单元格添加 🔍 图标和丰富的悬停效果
+- ✅ **界面美化** - 渐变背景、圆角设计、现代化交互
+- ✅ 完善文档体系 - 新增启动指南和功能说明文档
+- ✅ 项目结构优化 - 整理脚本、配置、文档到独立目录
+- ✅ 新增快速启动脚本 - 一键启动开发和生产环境
 
 ### v1.1.0 (2026-03-04)
 - ✅ 添加友好的时间格式显示

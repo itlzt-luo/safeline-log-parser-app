@@ -327,3 +327,68 @@
     width: 100%;
   }
 }
+
+/* 日期筛选器样式 */
+.date-filter {
+  grid-column: 1 / -1; /* 占据整行 */
+}
+
+.date-quick-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.quick-date-btn {
+  padding: 0.5rem 1rem;
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.25s ease;
+  flex: 0 0 auto;
+}
+
+.quick-date-btn:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.quick-date-btn:active {
+  transform: translateY(0);
+}
+
+.date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.date-inputs input[type="date"] {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.date-inputs input[type="date"]:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.date-separator {
+  color: #999;
+  font-weight: 500;
+  font-size: 0.95rem;
+}

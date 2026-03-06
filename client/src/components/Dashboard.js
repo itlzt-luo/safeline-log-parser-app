@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './Dashboard.css';
 
@@ -80,17 +80,20 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
       // IP过滤
       const matchesIP = ipFilter === 'all' || log.clientIp === ipFilter;
 
-      // 日期时间范围过滤（精确到秒）
+      // 日期范围过滤（精确到秒）
       let matchesDate = true;
       if (dateRange.start || dateRange.end) {
         const logDate = new Date(log.timestampDate || log.timestamp);
+        
         if (dateRange.start) {
           const startDate = new Date(dateRange.start);
+          startDate.setHours(0, 0, 0, 0);  // 开始时间设为当天 00:00:00
           matchesDate = matchesDate && logDate >= startDate;
         }
+        
         if (dateRange.end) {
           const endDate = new Date(dateRange.end);
-          // 不再自动设置到23:59:59，而是使用用户选择的精确时间
+          endDate.setHours(23, 59, 59, 999);  // 结束时间设为当天 23:59:59
           matchesDate = matchesDate && logDate <= endDate;
         }
       }
@@ -346,6 +349,77 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
     });
   }, [filteredLogs, loadMode, currentStats]);
 
+  // 格式化日期为 YYYY-MM-DD（本地时间）
+  const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // 快速日期选择
+  const handleQuickDateSelect = (type) => {
+    const now = new Date();
+    // 获取今天的日期（00:00:00）
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (type) {
+      case 'today':
+        // 今天：设置为同一天，后端会自动处理为 00:00:00 - 23:59:59
+        setDateRange({
+          start: formatLocalDate(today),
+          end: formatLocalDate(today)
+        });
+        break;
+      case 'yesterday':
+        // 昨天：设置为同一天
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        setDateRange({
+          start: formatLocalDate(yesterday),
+          end: formatLocalDate(yesterday)
+        });
+        break;
+      case 'last7days':
+        // 最近7天：从7天前到今天
+        const last7days = new Date(today);
+        last7days.setDate(last7days.getDate() - 6);
+        setDateRange({
+          start: formatLocalDate(last7days),
+          end: formatLocalDate(today)
+        });
+        break;
+      case 'last30days':
+        // 最近30天：从30天前到今天
+        const last30days = new Date(today);
+        last30days.setDate(last30days.getDate() - 29);
+        setDateRange({
+          start: formatLocalDate(last30days),
+          end: formatLocalDate(today)
+        });
+        break;
+      case 'thisMonth':
+        // 本月：从本月1号到今天
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        setDateRange({
+          start: formatLocalDate(monthStart),
+          end: formatLocalDate(today)
+        });
+        break;
+      case 'lastMonth':
+        // 上月：从上月1号到上月最后一天
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        setDateRange({
+          start: formatLocalDate(lastMonthStart),
+          end: formatLocalDate(lastMonthEnd)
+        });
+        break;
+      default:
+        break;
+    }
+  };
+
   // 重置筛选
   const handleResetFilters = () => {
     setDateRange({ start: '', end: '' });
@@ -358,38 +432,8 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
   // 检查是否有活动筛选
   const hasActiveFilters = dateRange.start || dateRange.end || statusFilter !== 'all' || methodFilter !== 'all' || domainFilter !== 'all' || ipFilter !== 'all';
 
-  // 优化模式：当筛选条件改变时通知父组件
-  useEffect(() => {
-    if (loadMode === 'optimized' && onFilterChange && hasActiveFilters) {
-      const filters = {
-        statusFilter,
-        methodFilter,
-        domainFilter,
-        ipFilter,
-        startTime: dateRange.start || undefined,
-        endTime: dateRange.end || undefined
-      };
-      
-      // 使用防抖，避免频繁请求
-      const timer = setTimeout(() => {
-        onFilterChange(filters);
-      }, 800); // 800ms 防抖
-
-      return () => clearTimeout(timer);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadMode, statusFilter, methodFilter, domainFilter, ipFilter, dateRange.start, dateRange.end, hasActiveFilters]);
-
   return (
     <div className="dashboard">
-      {/* 优化模式提示 */}
-      {loadMode === 'optimized' && (
-        <div className="optimized-mode-banner">
-          <span>⚡</span>
-          <span>筛选条件改变后将自动重新分析日志（约需1-3秒）</span>
-        </div>
-      )}
-      
       {/* 筛选器区域 */}
       <div className="dashboard-filters">
         <div className="filter-header">
@@ -402,25 +446,72 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
         </div>
         
         <div className="filter-grid">
-          {/* 日期时间范围 - 精确到秒 */}
-          <div className="filter-item">
-            <label>📅 开始时间</label>
-            <input
-              type="datetime-local"
-              step="1"
-              value={dateRange.start}
-              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-            />
-          </div>
-
-          <div className="filter-item">
-            <label>📅 结束时间</label>
-            <input
-              type="datetime-local"
-              step="1"
-              value={dateRange.end}
-              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-            />
+          {/* 日期范围筛选 */}
+          <div className="filter-item date-filter">
+            <label>📅 日期范围</label>
+            
+            {/* 快捷日期选择按钮 */}
+            <div className="date-quick-buttons">
+              <button 
+                className="quick-date-btn" 
+                onClick={() => handleQuickDateSelect('today')}
+                title="选择今天"
+              >
+                今天
+              </button>
+              <button 
+                className="quick-date-btn" 
+                onClick={() => handleQuickDateSelect('yesterday')}
+                title="选择昨天"
+              >
+                昨天
+              </button>
+              <button 
+                className="quick-date-btn" 
+                onClick={() => handleQuickDateSelect('last7days')}
+                title="选择最近7天"
+              >
+                近7天
+              </button>
+              <button 
+                className="quick-date-btn" 
+                onClick={() => handleQuickDateSelect('last30days')}
+                title="选择最近30天"
+              >
+                近30天
+              </button>
+              <button 
+                className="quick-date-btn" 
+                onClick={() => handleQuickDateSelect('thisMonth')}
+                title="选择本月"
+              >
+                本月
+              </button>
+              <button 
+                className="quick-date-btn" 
+                onClick={() => handleQuickDateSelect('lastMonth')}
+                title="选择上月"
+              >
+                上月
+              </button>
+            </div>
+            
+            {/* 自定义日期输入 */}
+            <div className="date-inputs">
+              <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                placeholder="开始日期"
+              />
+              <span className="date-separator">至</span>
+              <input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                placeholder="结束日期"
+              />
+            </div>
           </div>
 
           {/* 状态码筛选 */}

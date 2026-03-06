@@ -285,7 +285,129 @@ function LogTable({ logs, loadMode = 'full', logPath = null }) {
     setSelectedLog(null);
     // 恢复背景滚动
     document.body.style.overflow = 'unset';
-  };  return (
+  };
+
+  // 点击域名设置筛选
+  const handleDomainClick = (domain) => {
+    setDomainFilter(domain);
+    setCurrentPage(1);
+    // 如果详情页打开，则关闭它
+    if (showModal) {
+      handleCloseModal();
+    }
+  };
+
+  // 点击IP设置筛选
+  const handleIpClick = (ip) => {
+    setIpFilter(ip);
+    setCurrentPage(1);
+    // 如果详情页打开，则关闭它
+    if (showModal) {
+      handleCloseModal();
+    }
+  };
+
+  // 点击方法设置筛选
+  const handleMethodClick = (method) => {
+    setMethodFilter(normalizeMethod(method));
+    setCurrentPage(1);
+    // 如果详情页打开，则关闭它
+    if (showModal) {
+      handleCloseModal();
+    }
+  };
+
+  // 点击状态码设置筛选
+  const handleStatusClick = (status) => {
+    if (status >= 200 && status < 300) {
+      setStatusFilter('2xx');
+    } else if (status >= 300 && status < 400) {
+      setStatusFilter('3xx');
+    } else if (status >= 400 && status < 500) {
+      setStatusFilter('4xx');
+    } else if (status >= 500) {
+      setStatusFilter('5xx');
+    }
+    setCurrentPage(1);
+    // 如果详情页打开，则关闭它
+    if (showModal) {
+      handleCloseModal();
+    }
+  };
+
+  // 快捷日期选择
+  // 格式化日期为 YYYY-MM-DD（本地时间）
+  const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleQuickDateSelect = (type) => {
+    const now = new Date();
+    // 获取今天的日期（00:00:00）
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (type) {
+      case 'today':
+        // 今天：设置为同一天，筛选逻辑会自动处理为 00:00:00 - 23:59:59
+        setDateRange({
+          start: formatLocalDate(today),
+          end: formatLocalDate(today)
+        });
+        break;
+      case 'yesterday':
+        // 昨天：设置为同一天
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        setDateRange({
+          start: formatLocalDate(yesterday),
+          end: formatLocalDate(yesterday)
+        });
+        break;
+      case 'last7days':
+        // 最近7天：从7天前到今天
+        const last7days = new Date(today);
+        last7days.setDate(last7days.getDate() - 6);
+        setDateRange({
+          start: formatLocalDate(last7days),
+          end: formatLocalDate(today)
+        });
+        break;
+      case 'last30days':
+        // 最近30天：从30天前到今天
+        const last30days = new Date(today);
+        last30days.setDate(last30days.getDate() - 29);
+        setDateRange({
+          start: formatLocalDate(last30days),
+          end: formatLocalDate(today)
+        });
+        break;
+      case 'thisMonth':
+        // 本月：从本月1号到今天
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        setDateRange({
+          start: formatLocalDate(monthStart),
+          end: formatLocalDate(today)
+        });
+        break;
+      case 'lastMonth':
+        // 上月：从上月1号到上月最后一天
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        setDateRange({
+          start: formatLocalDate(lastMonthStart),
+          end: formatLocalDate(lastMonthEnd)
+        });
+        break;
+      default:
+        break;
+    }
+    setCurrentPage(1);
+  };
+
+  return (
     <div className="log-table-container">
       {/* 过滤器 */}
       <div className="filters">
@@ -394,39 +516,85 @@ function LogTable({ logs, loadMode = 'full', logPath = null }) {
 
       {/* 日期范围过滤 */}
       <div className="date-filter">
-        <label>
-          📅 开始日期:
-          <input
-            type="date"
-            value={dateRange.start}
-            onChange={(e) => {
-              setDateRange({ ...dateRange, start: e.target.value });
-              setCurrentPage(1);
-            }}
-          />
-        </label>
-        <label>
-          📅 结束日期:
-          <input
-            type="date"
-            value={dateRange.end}
-            onChange={(e) => {
-              setDateRange({ ...dateRange, end: e.target.value });
-              setCurrentPage(1);
-            }}
-          />
-        </label>
-        {(dateRange.start || dateRange.end) && (
+        <div className="date-quick-buttons">
           <button 
-            className="clear-date-btn"
-            onClick={() => {
-              setDateRange({ start: '', end: '' });
-              setCurrentPage(1);
-            }}
+            className="quick-date-btn"
+            onClick={() => handleQuickDateSelect('today')}
+            title="查看今天的日志"
           >
-            清除日期
+            📅 今天
           </button>
-        )}
+          <button 
+            className="quick-date-btn"
+            onClick={() => handleQuickDateSelect('yesterday')}
+            title="查看昨天的日志"
+          >
+            📅 昨天
+          </button>
+          <button 
+            className="quick-date-btn"
+            onClick={() => handleQuickDateSelect('last7days')}
+            title="查看最近7天的日志"
+          >
+            📅 最近7天
+          </button>
+          <button 
+            className="quick-date-btn"
+            onClick={() => handleQuickDateSelect('last30days')}
+            title="查看最近30天的日志"
+          >
+            📅 最近30天
+          </button>
+          <button 
+            className="quick-date-btn"
+            onClick={() => handleQuickDateSelect('thisMonth')}
+            title="查看本月的日志"
+          >
+            📅 本月
+          </button>
+          <button 
+            className="quick-date-btn"
+            onClick={() => handleQuickDateSelect('lastMonth')}
+            title="查看上月的日志"
+          >
+            📅 上月
+          </button>
+        </div>
+        <div className="date-inputs">
+          <label>
+            📅 开始日期:
+            <input
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => {
+                setDateRange({ ...dateRange, start: e.target.value });
+                setCurrentPage(1);
+              }}
+            />
+          </label>
+          <label>
+            📅 结束日期:
+            <input
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => {
+                setDateRange({ ...dateRange, end: e.target.value });
+                setCurrentPage(1);
+              }}
+            />
+          </label>
+          {(dateRange.start || dateRange.end) && (
+            <button 
+              className="clear-date-btn"
+              onClick={() => {
+                setDateRange({ start: '', end: '' });
+                setCurrentPage(1);
+              }}
+            >
+              ✖ 清除
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 结果统计 */}
@@ -483,14 +651,36 @@ function LogTable({ logs, loadMode = 'full', logPath = null }) {
                   <td className="timestamp" title={log.timestamp}>
                     {formatTime(log.timestampDate || log.timestamp)}
                   </td>
-                  <td className="domain" title={log.domain}>{log.domain}</td>
-                  <td className={`method method-${normalizeMethod(log.method).toLowerCase()}`}>
+                  <td 
+                    className="domain clickable-cell" 
+                    title="点击筛选此域名"
+                    onClick={() => handleDomainClick(log.domain)}
+                  >
+                    {log.domain}
+                  </td>
+                  <td 
+                    className={`method method-${normalizeMethod(log.method).toLowerCase()} clickable-cell`}
+                    title="点击筛选此方法"
+                    onClick={() => handleMethodClick(log.method)}
+                  >
                     {normalizeMethod(log.method)}
                   </td>
                   <td className="path" title={log.path}>{log.path}</td>
-                  <td className={`status ${getStatusClass(log.status)}`}>{log.status}</td>
+                  <td 
+                    className={`status ${getStatusClass(log.status)} clickable-cell`}
+                    title="点击筛选此状态码范围"
+                    onClick={() => handleStatusClick(log.status)}
+                  >
+                    {log.status}
+                  </td>
                   <td className="size">{formatSize(log.size)}</td>
-                  <td className="ip">{log.clientIp}</td>
+                  <td 
+                    className="ip clickable-cell"
+                    title="点击筛选此IP"
+                    onClick={() => handleIpClick(log.clientIp)}
+                  >
+                    {log.clientIp}
+                  </td>
                   <td className="actions">
                     <button 
                       className="detail-btn"
@@ -594,12 +784,22 @@ function LogTable({ logs, loadMode = 'full', logPath = null }) {
                 <h3>🌐 请求信息</h3>
                 <div className="detail-item">
                   <span className="label">域名:</span>
-                  <span className="value highlight">{selectedLog.domain}</span>
+                  <span 
+                    className="value highlight clickable-filter" 
+                    onClick={() => handleDomainClick(selectedLog.domain)}
+                    title="点击筛选此域名"
+                  >
+                    {selectedLog.domain} 🔍
+                  </span>
                 </div>
                 <div className="detail-item">
                   <span className="label">请求方法:</span>
-                  <span className={`value method-badge method-${normalizeMethod(selectedLog.method).toLowerCase()}`}>
-                    {normalizeMethod(selectedLog.method)}
+                  <span 
+                    className={`value method-badge method-${normalizeMethod(selectedLog.method).toLowerCase()} clickable-filter`}
+                    onClick={() => handleMethodClick(selectedLog.method)}
+                    title="点击筛选此方法"
+                  >
+                    {normalizeMethod(selectedLog.method)} 🔍
                   </span>
                 </div>
                 <div className="detail-item">
@@ -620,8 +820,12 @@ function LogTable({ logs, loadMode = 'full', logPath = null }) {
                 <h3>📊 响应信息</h3>
                 <div className="detail-item">
                   <span className="label">状态码:</span>
-                  <span className={`value status-badge ${getStatusClass(selectedLog.status)}`}>
-                    {selectedLog.status}
+                  <span 
+                    className={`value status-badge ${getStatusClass(selectedLog.status)} clickable-filter`}
+                    onClick={() => handleStatusClick(selectedLog.status)}
+                    title="点击筛选此状态码范围"
+                  >
+                    {selectedLog.status} 🔍
                   </span>
                 </div>
                 <div className="detail-item">
@@ -638,7 +842,13 @@ function LogTable({ logs, loadMode = 'full', logPath = null }) {
                 </div>
                 <div className="detail-item">
                   <span className="label">客户端 IP:</span>
-                  <span className="value highlight">{selectedLog.clientIp}</span>
+                  <span 
+                    className="value highlight clickable-filter" 
+                    onClick={() => handleIpClick(selectedLog.clientIp)}
+                    title="点击筛选此IP"
+                  >
+                    {selectedLog.clientIp} 🔍
+                  </span>
                 </div>
                 <div className="detail-item">
                   <span className="label">User-Agent:</span>
