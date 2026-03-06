@@ -59,8 +59,10 @@ class LogParser {
   parseLine(line) {
     try {
       // 使用正则表达式解析日志行
-      // 修正格式: user-agent 和 client-ip 之间是空格，且 client-ip 在引号内
-      const pattern = /^(\S+)\s+\|\s+(\S+)\s+\|\s+([^\|]+)\|\s+"([^"]+)"\s+\|\s+"([^"]+)"\s+\|\s+(\d+)\s+\|\s+(\d+)\s+\|\s+"([^"]*)"\s+\|\s+"([^"]+)"\s+"([^"]+)"$/;
+      // 兼容两种格式: 
+      // 1. 包含 clientIp 的: ... | "user-agent" "client-ip"
+      // 2. 不包含 clientIp 的 (Nginx默认/部分场景): ... | "user-agent"
+      const pattern = /^(\S+)\s+\|\s+(\S+)\s+\|\s+([^\|]+)\|\s+"([^"]+)"\s+\|\s+"([^"]+)"\s+\|\s+(\d+)\s+\|\s+(\d+)\s+\|\s+"([^"]*)"\s+\|\s+"([^"]+)"(?:\s+"([^"]+)")?$/;
       
       const match = line.match(pattern);
       
@@ -69,7 +71,10 @@ class LogParser {
         return null;
       }
 
-      const [, ip, user, timestamp, domain, request, status, size, referer, userAgent, clientIp] = match;
+      const [, ip, user, timestamp, domain, request, status, size, referer, userAgent, rawClientIp] = match;
+      
+      // 如果没有 clientIp，默认使用前面的 ip 字段
+      const clientIp = rawClientIp || ip;
       
       // 解析请求部分 (方法 路径 协议)
       const requestParts = request.match(/^(\S+)\s+(\S+)\s+(\S+)$/);

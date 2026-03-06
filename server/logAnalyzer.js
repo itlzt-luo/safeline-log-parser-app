@@ -303,60 +303,79 @@ class LogAnalyzer {
     const hours = minutes / 60;
     const days = hours / 24;
 
-    // 目标：生成20-50个数据点
-    const targetPoints = 30;
+    // 目标：生成大约 20-60 个数据点
     let granularityMs;
     let formatFunc;
 
-    // 根据时间跨度和目标点数，动态选择粒度
-    if (days > 90) {
-      // 超过90天：按周
+    // 根据时间跨度和目标点数，动态选择更合理的粒度
+    if (days > 180) {
+      // 超过半年：按月
+      granularityMs = 30 * 24 * 60 * 60 * 1000;
+      formatFunc = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    } else if (days > 60) {
+      // 2-6个月：按周
       granularityMs = 7 * 24 * 60 * 60 * 1000;
       formatFunc = (d) => {
         const weekNum = Math.floor((d - new Date(d.getFullYear(), 0, 1)) / (7 * 24 * 60 * 60 * 1000)) + 1;
-        return `第${weekNum}周`;
+        return `${d.getFullYear()} 第${weekNum}周`;
       };
-    } else if (days > 30) {
-      // 30-90天：按3天
-      granularityMs = 3 * 24 * 60 * 60 * 1000;
-      formatFunc = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
-    } else if (days > 7) {
-      // 7-30天：按天
+    } else if (days > 14) {
+      // 2周-2个月：按天
       granularityMs = 24 * 60 * 60 * 1000;
       formatFunc = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+    } else if (days > 3) {
+      // 3-14天：按 6 小时 或 12 小时 (确保点数在 12-56 之间)
+      granularityMs = (days > 7 ? 12 : 6) * 60 * 60 * 1000;
+      formatFunc = (d) => {
+        const hour = Math.floor(d.getHours() / (granularityMs / (60 * 60 * 1000))) * (granularityMs / (60 * 60 * 1000));
+        return `${d.getMonth() + 1}/${d.getDate()} ${String(hour).padStart(2, '0')}:00`;
+      };
     } else if (days > 1) {
-      // 1-7天：按小时
-      granularityMs = 60 * 60 * 1000;
-      formatFunc = (d) => `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:00`;
-    } else if (hours > 6) {
-      // 6-24小时：按15分钟
-      granularityMs = 15 * 60 * 1000;
+      // 1-3天：按 1 小时 或 2 小时
+      granularityMs = (days > 2 ? 2 : 1) * 60 * 60 * 1000;
       formatFunc = (d) => {
-        const minute = Math.floor(d.getMinutes() / 15) * 15;
+        const hour = Math.floor(d.getHours() / (granularityMs / (60 * 60 * 1000))) * (granularityMs / (60 * 60 * 1000));
+        return `${d.getMonth() + 1}/${d.getDate()} ${String(hour).padStart(2, '0')}:00`;
+      };
+    } else if (hours > 12) {
+      // 12-24小时：按 30 分钟
+      granularityMs = 30 * 60 * 1000;
+      formatFunc = (d) => {
+        const minute = Math.floor(d.getMinutes() / 30) * 30;
         return `${String(d.getHours()).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       };
-    } else if (hours > 2) {
-      // 2-6小时：按5分钟
-      granularityMs = 5 * 60 * 1000;
+    } else if (hours > 4) {
+      // 4-12小时：按 10 分钟或 15 分钟
+      granularityMs = (hours > 8 ? 15 : 10) * 60 * 1000;
       formatFunc = (d) => {
-        const minute = Math.floor(d.getMinutes() / 5) * 5;
+        const minute = Math.floor(d.getMinutes() / (granularityMs / (60 * 1000))) * (granularityMs / (60 * 1000));
         return `${String(d.getHours()).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       };
-    } else if (minutes > 30) {
-      // 30分钟-2小时：按分钟
+    } else if (hours > 1) {
+      // 1-4小时：按 2 分钟或 5 分钟
+      granularityMs = (hours > 2 ? 5 : 2) * 60 * 1000;
+      formatFunc = (d) => {
+        const minute = Math.floor(d.getMinutes() / (granularityMs / (60 * 1000))) * (granularityMs / (60 * 1000));
+        return `${String(d.getHours()).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      };
+    } else if (minutes > 15) {
+      // 15-60分钟：按 1 分钟
       granularityMs = 60 * 1000;
       formatFunc = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     } else if (minutes > 5) {
-      // 5-30分钟：按10秒
-      granularityMs = 10 * 1000;
+      // 5-15分钟：按 15 秒
+      granularityMs = 15 * 1000;
       formatFunc = (d) => {
-        const second = Math.floor(d.getSeconds() / 10) * 10;
+        const second = Math.floor(d.getSeconds() / 15) * 15;
         return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
       };
     } else {
-      // 5分钟内：按秒
-      granularityMs = 1000;
-      formatFunc = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+      // 5分钟内：按 5 秒或 1 秒
+      granularityMs = (minutes > 2 ? 5 : 1) * 1000;
+      formatFunc = (d) => {
+        const second = Math.floor(d.getSeconds() / (granularityMs / 1000)) * (granularityMs / 1000);
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
+      };
     }
 
     // 将数据按粒度分组
@@ -384,9 +403,43 @@ class LogAnalyzer {
     });
 
     // 转换为数组并按时间排序
-    return Object.values(timeGroups)
-      .sort((a, b) => a.bucketTime - b.bucketTime)
-      .map(({ time, total, success, error }) => ({ time, total, success, error }));
+    let result = Object.values(timeGroups)
+      .sort((a, b) => a.bucketTime - b.bucketTime);
+
+    // 补齐空缺的时间点，让曲线更加平滑、美观，避免时间轴突然跳跃
+    if (result.length > 1) {
+      const filledResult = [];
+      for (let i = 0; i < result.length - 1; i++) {
+        const current = result[i];
+        const next = result[i + 1];
+        filledResult.push(current);
+
+        // 如果两个点之间的跨度大于两倍粒度，填补中间的空位
+        // 但为了防止生成过多点，限制最多填补50个空位
+        let gapMs = next.bucketTime - current.bucketTime;
+        let inserts = 0;
+        
+        while (gapMs > granularityMs * 1.5 && inserts < 50) {
+          const newBucketTime = current.bucketTime + (inserts + 1) * granularityMs;
+          if (newBucketTime >= next.bucketTime) break;
+          
+          filledResult.push({
+            time: formatFunc(new Date(newBucketTime)),
+            total: 0,
+            success: 0,
+            error: 0,
+            bucketTime: newBucketTime
+          });
+          
+          gapMs -= granularityMs;
+          inserts++;
+        }
+      }
+      filledResult.push(result[result.length - 1]);
+      result = filledResult;
+    }
+
+    return result.map(({ time, total, success, error }) => ({ time, total, success, error }));
   }
 
   /**

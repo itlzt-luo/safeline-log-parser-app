@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Search, RotateCcw, Calendar, PieChart as PieChartIcon, Wrench, Globe, Monitor, Info, BarChart2, AlertTriangle, Box, TrendingUp, Flame, Users, Lightbulb } from 'lucide-react';
 import './Dashboard.css';
 
 const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0'];
@@ -7,10 +8,39 @@ const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a'
 function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = null }) {
   // 筛选状态
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [tempDateRange, setTempDateRange] = useState({ start: '', end: '' }); // 用于日期输入框的临时状态
   const [statusFilter, setStatusFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
   const [domainFilter, setDomainFilter] = useState('all');
   const [ipFilter, setIpFilter] = useState('all');
+
+  // 用于防抖的引用
+  const isFirstRender = useRef(true);
+
+  // 监听筛选条件变化，通知父组件（防抖）
+  useEffect(() => {
+    // 只在优化模式且存在回调时执行
+    if (loadMode === 'optimized' && onFilterChange) {
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return; // 跳过首次挂载，因为初始统计数据已在 App.js 中加载
+      }
+
+      const timer = setTimeout(() => {
+        onFilterChange({
+          statusFilter: statusFilter !== 'all' ? statusFilter : undefined,
+          methodFilter: methodFilter !== 'all' ? methodFilter : undefined,
+          domainFilter: domainFilter !== 'all' ? domainFilter : undefined,
+          ipFilter: ipFilter !== 'all' ? ipFilter : undefined,
+          startTime: dateRange.start || undefined,
+          endTime: dateRange.end || undefined
+        });
+      }, 500); // 500ms 防抖
+
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, methodFilter, domainFilter, ipFilter, dateRange, loadMode]);
 
   // 标准化请求方法
   const normalizeMethod = (method) => {
@@ -366,6 +396,10 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
     switch (type) {
       case 'today':
         // 今天：设置为同一天，后端会自动处理为 00:00:00 - 23:59:59
+        setTempDateRange({
+          start: formatLocalDate(today),
+          end: formatLocalDate(today)
+        });
         setDateRange({
           start: formatLocalDate(today),
           end: formatLocalDate(today)
@@ -375,6 +409,10 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
         // 昨天：设置为同一天
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
+        setTempDateRange({
+          start: formatLocalDate(yesterday),
+          end: formatLocalDate(yesterday)
+        });
         setDateRange({
           start: formatLocalDate(yesterday),
           end: formatLocalDate(yesterday)
@@ -384,6 +422,10 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
         // 最近7天：从7天前到今天
         const last7days = new Date(today);
         last7days.setDate(last7days.getDate() - 6);
+        setTempDateRange({
+          start: formatLocalDate(last7days),
+          end: formatLocalDate(today)
+        });
         setDateRange({
           start: formatLocalDate(last7days),
           end: formatLocalDate(today)
@@ -393,6 +435,10 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
         // 最近30天：从30天前到今天
         const last30days = new Date(today);
         last30days.setDate(last30days.getDate() - 29);
+        setTempDateRange({
+          start: formatLocalDate(last30days),
+          end: formatLocalDate(today)
+        });
         setDateRange({
           start: formatLocalDate(last30days),
           end: formatLocalDate(today)
@@ -401,6 +447,10 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
       case 'thisMonth':
         // 本月：从本月1号到今天
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        setTempDateRange({
+          start: formatLocalDate(monthStart),
+          end: formatLocalDate(today)
+        });
         setDateRange({
           start: formatLocalDate(monthStart),
           end: formatLocalDate(today)
@@ -410,6 +460,10 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
         // 上月：从上月1号到上月最后一天
         const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        setTempDateRange({
+          start: formatLocalDate(lastMonthStart),
+          end: formatLocalDate(lastMonthEnd)
+        });
         setDateRange({
           start: formatLocalDate(lastMonthStart),
           end: formatLocalDate(lastMonthEnd)
@@ -423,10 +477,43 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
   // 重置筛选
   const handleResetFilters = () => {
     setDateRange({ start: '', end: '' });
+    setTempDateRange({ start: '', end: '' });
     setStatusFilter('all');
     setMethodFilter('all');
     setDomainFilter('all');
     setIpFilter('all');
+  };
+
+  // 处理状态码点击
+  const handleStatusClick = (data) => {
+    if (data && data.status) {
+      let sf = 'all';
+      if (data.status >= 200 && data.status < 300) sf = '2xx';
+      else if (data.status >= 300 && data.status < 400) sf = '3xx';
+      else if (data.status >= 400 && data.status < 500) sf = '4xx';
+      else if (data.status >= 500) sf = '5xx';
+      
+      if (sf !== 'all') {
+        setStatusFilter(sf);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
+
+  // 处理方法点击
+  const handleMethodClick = (data) => {
+    if (data && data.name) {
+      setMethodFilter(data.name);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // 处理域名点击
+  const handleDomainClick = (data) => {
+    if (data && data.name) {
+      setDomainFilter(data.name);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // 检查是否有活动筛选
@@ -437,10 +524,10 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
       {/* 筛选器区域 */}
       <div className="dashboard-filters">
         <div className="filter-header">
-          <h3>🔍 筛选条件</h3>
+          <h3><Search size={18} /> 筛选条件</h3>
           {hasActiveFilters && (
             <button className="reset-btn" onClick={handleResetFilters}>
-              🔄 重置筛选
+              <RotateCcw size={16} /> 重置筛选
             </button>
           )}
         </div>
@@ -448,7 +535,7 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
         <div className="filter-grid">
           {/* 日期范围筛选 */}
           <div className="filter-item date-filter">
-            <label>📅 日期范围</label>
+            <label><Calendar size={16} /> 日期范围</label>
             
             {/* 快捷日期选择按钮 */}
             <div className="date-quick-buttons">
@@ -500,38 +587,45 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
             <div className="date-inputs">
               <input
                 type="date"
-                value={dateRange.start}
-                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                value={tempDateRange.start}
+                onChange={(e) => setTempDateRange({ ...tempDateRange, start: e.target.value })}
                 placeholder="开始日期"
               />
               <span className="date-separator">至</span>
               <input
                 type="date"
-                value={dateRange.end}
-                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                value={tempDateRange.end}
+                onChange={(e) => setTempDateRange({ ...tempDateRange, end: e.target.value })}
                 placeholder="结束日期"
               />
+              <button 
+                className="apply-date-btn"
+                onClick={() => setDateRange(tempDateRange)}
+                disabled={tempDateRange.start === dateRange.start && tempDateRange.end === dateRange.end}
+              >
+                确定
+              </button>
             </div>
           </div>
 
           {/* 状态码筛选 */}
           <div className="filter-item">
-            <label>📊 状态码</label>
+            <label><PieChartIcon size={16} /> 状态码</label>
             <select 
               value={statusFilter} 
               onChange={(e) => setStatusFilter(e.target.value)}
             >
               <option value="all">所有状态</option>
-              <option value="2xx">✅ 2xx 成功</option>
-              <option value="3xx">🔄 3xx 重定向</option>
-              <option value="4xx">⚠️ 4xx 客户端错误</option>
-              <option value="5xx">❌ 5xx 服务器错误</option>
+              <option value="2xx">2xx 成功</option>
+              <option value="3xx">3xx 重定向</option>
+              <option value="4xx">4xx 客户端错误</option>
+              <option value="5xx">5xx 服务器错误</option>
             </select>
           </div>
 
           {/* 请求方法筛选 */}
           <div className="filter-item">
-            <label>🔧 请求方法</label>
+            <label><Wrench size={16} /> 请求方法</label>
             <select 
               value={methodFilter} 
               onChange={(e) => setMethodFilter(e.target.value)}
@@ -545,7 +639,7 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
 
           {/* 域名筛选 */}
           <div className="filter-item">
-            <label>🌍 域名</label>
+            <label><Globe size={16} /> 域名</label>
             <select 
               value={domainFilter} 
               onChange={(e) => setDomainFilter(e.target.value)}
@@ -559,7 +653,7 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
 
           {/* IP筛选 */}
           <div className="filter-item">
-            <label>🖥️ 客户端IP</label>
+            <label><Monitor size={16} /> 客户端IP</label>
             <select 
               value={ipFilter} 
               onChange={(e) => setIpFilter(e.target.value)}
@@ -575,7 +669,7 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
         {/* 筛选结果提示 */}
         {hasActiveFilters && (
           <div className="filter-info">
-            📌 显示 {currentStats.totalRequests} 条记录（共 {logs.length} 条）
+            <Info size={16} /> 显示 {currentStats.totalRequests} 条记录（共 {logs.length} 条）
           </div>
         )}
       </div>
@@ -583,7 +677,7 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
       {/* 概览卡片 */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon">📊</div>
+          <div className="stat-icon"><BarChart2 /></div>
           <div className="stat-content">
             <h3>总请求数</h3>
             <p className="stat-value">{currentStats.totalRequests.toLocaleString()}</p>
@@ -591,7 +685,7 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">🌐</div>
+          <div className="stat-icon"><Globe /></div>
           <div className="stat-content">
             <h3>唯一 IP</h3>
             <p className="stat-value">{currentStats.uniqueIPs.toLocaleString()}</p>
@@ -599,7 +693,7 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">⚠️</div>
+          <div className="stat-icon"><AlertTriangle /></div>
           <div className="stat-content">
             <h3>错误率</h3>
             <p className="stat-value">{currentStats.errorRate}%</p>
@@ -607,7 +701,7 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">📦</div>
+          <div className="stat-icon"><Box /></div>
           <div className="stat-content">
             <h3>平均响应大小</h3>
             <p className="stat-value">{(currentStats.avgResponseSize / 1024).toFixed(2)} KB</p>
@@ -619,7 +713,7 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
       <div className="charts-grid">
         {/* 时间趋势图 */}
         <div className="chart-card full-width">
-          <h3>📈 请求时间趋势</h3>
+          <h3><TrendingUp size={20} /> 请求时间趋势</h3>
           {timeSeriesData.length === 0 ? (
             <div className="no-data-message">暂无时间趋势数据</div>
           ) : (
@@ -693,103 +787,161 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
 
         {/* 状态码分布 */}
         <div className="chart-card">
-          <h3>� 状态码分布</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={statusData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {statusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+          <h3><PieChartIcon size={20} /> 状态码分布</h3>
+          <p className="chart-hint"><Lightbulb size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px', marginTop: '-2px'}}/> 点击扇形可按状态码筛选</p>
+          {statusData.length === 0 ? (
+            <div className="no-data-message">暂无数据</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={statusData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={true}
+                  label={({ name, percent }) => percent > 0.05 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                  onClick={handleStatusClick}
+                  style={{cursor: 'pointer'}}
+                >
+                  {statusData.map((entry, index) => {
+                    // 根据状态码分配语义化颜色
+                    let color = COLORS[index % COLORS.length];
+                    if (entry.status >= 200 && entry.status < 300) color = '#43e97b'; // 绿色 (成功)
+                    else if (entry.status >= 300 && entry.status < 400) color = '#667eea'; // 蓝色 (重定向)
+                    else if (entry.status >= 400 && entry.status < 500) color = '#fee140'; // 黄色 (客户端错误)
+                    else if (entry.status >= 500) color = '#fa709a'; // 红色 (服务器错误)
+                    return <Cell key={`cell-${index}`} fill={color} />;
+                  })}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* 请求方法分布 */}
         <div className="chart-card">
-          <h3>🔧 请求方法分布</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={methodData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="value" fill="#667eea" name="请求数" />
-            </BarChart>
-          </ResponsiveContainer>
+          <h3><Wrench size={20} /> 请求方法分布</h3>
+          <p className="chart-hint"><Lightbulb size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px', marginTop: '-2px'}}/> 点击扇形可按方法筛选</p>
+          {methodData.length === 0 ? (
+            <div className="no-data-message">暂无数据</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={methodData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={true}
+                  label={({ name, percent }) => percent > 0.05 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                  onClick={handleMethodClick}
+                  style={{cursor: 'pointer'}}
+                >
+                  {methodData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Top 10 访问路径 */}
         <div className="chart-card full-width">
-          <h3>🔥 Top 10 访问路径</h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={pathData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="name" type="category" width={200} />
-              <Tooltip content={({ active, payload }) => {
-                if (active && payload && payload.length) {
-                  return (
-                    <div className="custom-tooltip">
-                      <p className="tooltip-path">{payload[0].payload.fullPath}</p>
-                      <p className="tooltip-count">请求次数: {payload[0].value}</p>
-                    </div>
-                  );
-                }
-                return null;
-              }} />
-              <Legend />
-              <Bar dataKey="count" fill="#764ba2" name="请求次数" />
-            </BarChart>
-          </ResponsiveContainer>
+          <h3><Flame size={20} /> Top 10 访问路径</h3>
+          {pathData.length === 0 ? (
+            <div className="no-data-message">暂无数据</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(300, pathData.length * 40)}>
+              <BarChart data={pathData} layout="vertical" margin={{ left: 50, right: 30 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={true} />
+                <XAxis type="number" />
+                <YAxis dataKey="name" type="category" width={180} tick={{fontSize: 12}} />
+                <Tooltip content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="custom-tooltip">
+                        <p className="tooltip-path" style={{wordBreak: 'break-all', maxWidth: '300px', whiteSpace: 'normal'}}>{payload[0].payload.fullPath}</p>
+                        <p className="tooltip-count">请求次数: {payload[0].value.toLocaleString()}</p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }} />
+                <Legend />
+                <Bar dataKey="count" fill="#764ba2" name="请求次数" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Top 10 客户端 IP */}
         <div className="chart-card full-width">
-          <h3>👥 Top 10 客户端 IP</h3>
-          <p className="chart-hint">💡 点击柱状图可按IP筛选</p>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={ipData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar 
-                dataKey="count" 
-                fill="#4facfe" 
-                name="请求次数"
-                onClick={handleIPBarClick}
-                cursor="pointer"
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <h3><Users size={20} /> Top 10 客户端 IP</h3>
+          <p className="chart-hint"><Lightbulb size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px', marginTop: '-2px'}}/> 点击柱状图可按IP筛选</p>
+          {ipData.length === 0 ? (
+            <div className="no-data-message">暂无数据</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={ipData} margin={{ left: 10, right: 30, top: 20, bottom: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{fontSize: 12}} 
+                  angle={-30} 
+                  textAnchor="end" 
+                  height={60} 
+                />
+                <YAxis />
+                <Tooltip formatter={(value) => [value.toLocaleString(), '请求次数']} />
+                <Legend />
+                <Bar 
+                  dataKey="count" 
+                  fill="#4facfe" 
+                  name="请求次数"
+                  onClick={handleIPBarClick}
+                  cursor="pointer"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={60}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Top 10 访问域名 */}
         <div className="chart-card full-width">
-          <h3>🌍 Top 10 访问域名</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={domainData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="count" fill="#43e97b" name="请求次数" />
-            </BarChart>
-          </ResponsiveContainer>
+          <h3><Globe size={20} /> Top 10 访问域名</h3>
+          <p className="chart-hint"><Lightbulb size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px', marginTop: '-2px'}}/> 点击柱状图可按域名筛选</p>
+          {domainData.length === 0 ? (
+            <div className="no-data-message">暂无数据</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={domainData} margin={{ left: 10, right: 30, top: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{fontSize: 12}} angle={domainData.length > 5 ? -15 : 0} textAnchor={domainData.length > 5 ? "end" : "middle"} />
+                <YAxis />
+                <Tooltip formatter={(value) => [value.toLocaleString(), '请求次数']} />
+                <Legend wrapperStyle={{paddingTop: '20px'}} />
+                <Bar 
+                  dataKey="count" 
+                  fill="#43e97b" 
+                  name="请求次数" 
+                  radius={[4, 4, 0, 0]} 
+                  maxBarSize={60} 
+                  onClick={handleDomainClick}
+                  cursor="pointer"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>

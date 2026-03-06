@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { Upload, FileText, FolderOpen, Clock, History, Trash2, Lightbulb } from 'lucide-react';
 import './FileUpload.css';
 
 const HISTORY_KEY = 'log_path_history';
@@ -95,21 +96,21 @@ function FileUpload({ onFileUpload, onLoadDefault, onPathSubmit, loading }) {
           onClick={handleButtonClick}
           disabled={loading}
         >
-          📁 上传日志文件
+          <Upload size={18} style={{marginRight: '6px', verticalAlign: 'middle'}}/> 上传日志文件
         </button>
         <button 
           className="upload-btn secondary"
           onClick={onLoadDefault}
           disabled={loading}
         >
-          📄 加载默认日志
+          <FileText size={18} style={{marginRight: '6px', verticalAlign: 'middle'}}/> 加载默认日志
         </button>
         <button 
           className="upload-btn tertiary"
           onClick={() => setShowPathInput(!showPathInput)}
           disabled={loading}
         >
-          📂 {showPathInput ? '隐藏' : '指定'}路径
+          <FolderOpen size={18} style={{marginRight: '6px', verticalAlign: 'middle'}}/> {showPathInput ? '隐藏' : '指定'}路径
         </button>
         {pathHistory.length > 0 && (
           <button 
@@ -117,7 +118,7 @@ function FileUpload({ onFileUpload, onLoadDefault, onPathSubmit, loading }) {
             onClick={() => setShowHistory(!showHistory)}
             disabled={loading}
           >
-            🕒 历史记录 ({pathHistory.length})
+            <Clock size={18} style={{marginRight: '6px', verticalAlign: 'middle'}}/> 历史记录 ({pathHistory.length})
           </button>
         )}
       </div>
@@ -125,13 +126,13 @@ function FileUpload({ onFileUpload, onLoadDefault, onPathSubmit, loading }) {
       {showHistory && pathHistory.length > 0 && (
         <div className="history-panel">
           <div className="history-header">
-            <h4>📜 历史日志路径</h4>
+            <h4><History size={18} style={{marginRight: '6px', verticalAlign: 'middle'}}/> 历史日志路径</h4>
             <button 
               className="clear-history-btn"
               onClick={clearHistory}
               title="清空所有历史记录"
             >
-              🗑️ 清空
+              <Trash2 size={16} style={{marginRight: '4px', verticalAlign: 'middle'}}/> 清空
             </button>
           </div>
           <ul className="history-list">
@@ -157,7 +158,7 @@ function FileUpload({ onFileUpload, onLoadDefault, onPathSubmit, loading }) {
             ))}
           </ul>
           <p className="history-hint">
-            💡 点击路径快速加载，最多保存 {MAX_HISTORY} 条记录
+            <Lightbulb size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px', marginTop: '-2px'}}/> 点击路径快速加载，最多保存 {MAX_HISTORY} 条记录
           </p>
         </div>
       )}

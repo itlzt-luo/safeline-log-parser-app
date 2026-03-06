@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import axios from 'axios';
+import { BarChart3, List, AlertTriangle, Activity, HandMetal } from 'lucide-react';
 import './App.css';
 import Dashboard from './components/Dashboard';
 import LogTable from './components/LogTable';
@@ -14,6 +15,21 @@ function App() {
   const [loadMode, setLoadMode] = useState('full'); // 'full' 或 'optimized'
   const [currentLogPath, setCurrentLogPath] = useState(null);
   const [fileInfo, setFileInfo] = useState(null);
+
+  // 处理统计面板筛选变化，使用 useCallback 避免在依赖数组中触发无限循环
+  const handleFilterChange = useCallback(async (filters) => {
+    if (loadMode !== 'optimized' || !currentLogPath) return;
+    
+    try {
+      const statsResponse = await axios.post('/api/logs/analyze', {
+        logPath: currentLogPath,
+        filters: filters
+      });
+      setStatistics(statsResponse.data.statistics);
+    } catch (err) {
+      console.error('重新分析日志失败:', err);
+    }
+  }, [loadMode, currentLogPath]);
 
   // 加载默认的 log.txt
   const loadDefaultLog = async () => {
@@ -101,7 +117,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>📊 日志解析器</h1>
+        <h1><BarChart3 className="header-icon" size={36} /> 日志解析器</h1>
         <p>分析和可视化您的服务器日志</p>
       </header>
 
@@ -115,7 +131,7 @@ function App() {
 
         {error && (
           <div className="error-message">
-            ⚠️ {error}
+            <AlertTriangle size={20} className="inline-icon" /> {error}
           </div>
         )}
 
@@ -132,7 +148,7 @@ function App() {
             {loadMode === 'optimized' && fileInfo && (
               <div className="large-file-notice">
                 <div className="notice-header">
-                  <span className="notice-icon">📊</span>
+                  <Activity className="notice-icon text-indigo-500" size={24} />
                   <strong>大文件优化模式</strong>
                 </div>
                 <div className="notice-content">
@@ -147,13 +163,13 @@ function App() {
                 className={`tab ${activeTab === 'dashboard' ? 'active' : ''}`}
                 onClick={() => setActiveTab('dashboard')}
               >
-                📈 数据统计
+                <Activity size={18} className="tab-icon" /> 数据统计
               </button>
               <button
                 className={`tab ${activeTab === 'logs' ? 'active' : ''}`}
                 onClick={() => setActiveTab('logs')}
               >
-                📋 日志详情 {loadMode === 'optimized' && '(分页模式)'}
+                <List size={18} className="tab-icon" /> 日志详情 {loadMode === 'optimized' && '(分页模式)'}
               </button>
             </div>
 
@@ -163,7 +179,7 @@ function App() {
                   statistics={statistics} 
                   logs={logs}
                   loadMode={loadMode}
-                  onFilterChange={null}
+                  onFilterChange={handleFilterChange}
                 />
               )}
               {activeTab === 'logs' && (
@@ -179,7 +195,7 @@ function App() {
 
         {!statistics && !loading && !error && (
           <div className="welcome">
-            <h2>👋 欢迎使用日志解析器</h2>
+            <h2><HandMetal size={32} className="inline-icon" style={{marginRight: '10px'}} /> 欢迎使用日志解析器</h2>
             <p>请上传日志文件或加载默认日志开始分析</p>
           </div>
         )}

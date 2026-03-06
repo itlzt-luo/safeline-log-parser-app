@@ -1,10 +1,9 @@
 .log-table-container {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
+  background: white;
   padding: 2rem;
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
 }
 
 .filters {
@@ -168,6 +167,10 @@
 .table-wrapper {
   overflow-x: auto;
   margin-bottom: 1.5rem;
+  max-height: 800px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
 }
 
 .log-table {
@@ -177,8 +180,12 @@
 }
 
 .log-table thead {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: #f8fafc;
+  color: #475569;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 1px 0 #e2e8f0;
 }
 
 .log-table th {
@@ -189,12 +196,13 @@
 }
 
 .log-table tbody tr {
-  border-bottom: 1px solid #e0e0e0;
-  transition: background-color 0.2s ease;
+  border-bottom: 1px solid #f1f5f9;
+  transition: all 0.2s ease;
+  background: white;
 }
 
 .log-table tbody tr:hover {
-  background-color: #f5f5f5;
+  background-color: #f8fafc;
 }
 
 .log-table td {
@@ -378,20 +386,26 @@
 }
 
 .detail-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
+  background: white;
+  color: #667eea;
+  border: 1px solid #667eea;
   border-radius: 6px;
   padding: 0.4rem 0.8rem;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  font-weight: 600;
 }
 
 .detail-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  background: #667eea;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.detail-btn:active {
+  transform: translateY(0);
 }
 
 .detail-btn:active {
@@ -474,7 +488,34 @@
     width: 100%;
   }
 
-  .clear-date-btn {
+.apply-date-btn {
+  padding: 0.5rem 1rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  height: 38px;
+}
+
+.apply-date-btn:hover:not(:disabled) {
+  background: #5a67d8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.apply-date-btn:disabled {
+  background: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.clear-date-btn {
     width: 100%;
   }
 
@@ -522,13 +563,13 @@
 
 .modal-content {
   background: white;
-  border-radius: 16px;
+  border-radius: 12px;
   max-width: 800px;
   width: 90%;
   max-height: 90vh;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: slideUp 0.3s ease;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -549,38 +590,40 @@
 }
 
 .modal-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: white;
+  color: #334155;
   padding: 1.5rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .modal-header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
 }
 
 .close-btn {
-  background: rgba(255, 255, 255, 0.2);
+  background: #f1f5f9;
   border: none;
-  color: white;
+  color: #64748b;
   font-size: 1.5rem;
   width: 36px;
   height: 36px;
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: rotate(90deg);
+  background: #e2e8f0;
+  color: #0f172a;
+  transform: scale(1.1);
 }
 
 .modal-body {
