@@ -142,6 +142,27 @@ safeline-log-parser-app/
 └── package.json           # 项目清单
 ```
 
+## 文档目录 (docs/) 📚
+
+为了方便开发者快速了解项目的架构、部署和具体功能，`docs/` 目录下提供了详尽的说明文档。建议从 **[项目总览 (PROJECT_OVERVIEW.md)](docs/PROJECT_OVERVIEW.md)** 开始阅读。
+
+### 🌟 核心指南
+- **[项目总览](docs/PROJECT_OVERVIEW.md)** - 了解项目的整体架构、技术栈和核心功能。
+- **[启动指南](docs/STARTUP_GUIDE.md)** / **[启动总结](docs/STARTUP_SUMMARY.md)** - 本地开发和运行的详细说明。
+- **[使用指南](docs/USAGE.md)** - 应用的基本操作和功能介绍。
+
+### 🚀 部署与测试
+- **[完整部署](docs/DEPLOY.md)** - 生产环境下的详细部署教程（包括 Node、PM2 等）。
+- **[快速部署](docs/QUICK_DEPLOY.md)** - 极简的快速部署流程。
+- **[测试清单](docs/TESTING_CHECKLIST.md)** - 项目测试的完整检查点。
+
+### 💡 进阶功能与优化说明
+- **[大文件处理指南](docs/LARGE_FILE_USAGE_GUIDE.md)** & **[大文件优化说明](docs/LARGE_FILE_OPTIMIZATION.md)** - 介绍如何利用流式处理应对 GB 级海量日志。
+- **[过滤器快速指南](docs/FILTERS_QUICK_GUIDE.md)** & **[快速筛选功能](docs/QUICK_FILTER_FEATURE.md)** - 详细说明强大的多维度过滤和交互式表格筛选功能。
+- **[时间选择器优化](docs/DATE_PICKER_OPTIMIZATION.md)** - 关于时间范围筛选与快捷日期的实现说明。
+- **[历史记录功能](docs/HISTORY_FEATURE.md)** - 分析历史记录保存与查看功能的实现细节。
+- **[版本更新日志](docs/V1.2.0_RELEASE_NOTES.md)** - 查看历史重大版本更新内容。
+
 ## 最近更新 🆕
 
 ### v1.3.0 (2026-03-06)
