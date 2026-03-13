@@ -418,3 +418,25 @@
   transform: none;
   box-shadow: none;
 }
+.map-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.map-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.map-btn:hover {
+  background: #e2e8f0;
+  color: #334155;
+}

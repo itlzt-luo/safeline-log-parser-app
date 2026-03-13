@@ -230,6 +230,41 @@ class LogParser {
       .slice(0, 10)
       .map(([location, count]) => ({ location, count }));
 
+    // 处理省份分布 (用于地图)
+    const provinceStats = {};
+    const provinceMap = {
+      '北京': '北京市',
+      '天津': '天津市',
+      '上海': '上海市',
+      '重庆': '重庆市',
+      '新疆': '新疆维吾尔自治区',
+      '西藏': '西藏自治区',
+      '宁夏': '宁夏回族自治区',
+      '内蒙古': '内蒙古自治区',
+      '广西': '广西壮族自治区',
+      '香港': '香港特别行政区',
+      '澳门': '澳门特别行政区'
+    };
+
+    Object.entries(locations).forEach(([loc, count]) => {
+      if (!loc || loc === '未知' || loc === '内网IP') return;
+      const parts = loc.split('-');
+      let province = parts[0];
+      if (province === '中国' && parts.length > 1) {
+        province = parts[1];
+      }
+      if (provinceMap[province]) {
+        province = provinceMap[province];
+      }
+      if (province) {
+        provinceStats[province] = (provinceStats[province] || 0) + count;
+      }
+    });
+
+    const provinceDistribution = Object.entries(provinceStats)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
     // 获取 Top 10 域名
     const topDomains = Object.entries(domains)
       .sort((a, b) => b[1] - a[1])
@@ -244,6 +279,7 @@ class LogParser {
       topPaths: topPaths,
       topClientIPs: topClientIPs,
       topLocations: topLocations,
+      provinceDistribution: provinceDistribution,
       topDomains: topDomains,
       errorRate: ((errorCount / logs.length) * 100).toFixed(2),
       avgResponseSize: Math.round(totalSize / logs.length)

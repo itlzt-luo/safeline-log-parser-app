@@ -1,7 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Search, RotateCcw, Calendar, PieChart as PieChartIcon, Wrench, Globe, Monitor, Info, BarChart2, AlertTriangle, Box, TrendingUp, Flame, Users, Lightbulb, MapPin } from 'lucide-react';
+import { Search, RotateCcw, Calendar, PieChart as PieChartIcon, Wrench, Globe, Monitor, Info, BarChart2, AlertTriangle, Box, TrendingUp, Flame, Users, Lightbulb, MapPin, Map, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import ReactECharts from 'echarts-for-react';
+import * as echarts from 'echarts';
+import chinaMap from '../assets/china.json';
 import './Dashboard.css';
+
+echarts.registerMap('china', chinaMap);
 
 const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0'];
 
@@ -236,6 +241,90 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
     name: item.location,
     count: item.count
   })) : [];
+
+  // 准备地图数据
+  const mapData = currentStats.provinceDistribution || [];
+  const maxMapValue = mapData.length > 0 ? Math.max(...mapData.map(d => d.value)) : 100;
+
+  const mapOption = {
+    tooltip: {
+      trigger: 'item',
+      formatter: (params) => {
+        return `${params.name}<br/>请求数: ${params.value || 0}`;
+      }
+    },
+    visualMap: {
+      min: 0,
+      max: maxMapValue,
+      text: ['高', '低'],
+      realtime: false,
+      calculable: true,
+      inRange: {
+        color: ['#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695']
+      }
+    },
+    series: [
+      {
+        name: 'IP归属地',
+        type: 'map',
+        map: 'china',
+        roam: true,
+        // 限制缩放比例，防止过敏导致地图太大或太小
+        scaleLimit: {
+          min: 0.8,
+          max: 4
+        },
+        label: {
+          show: false
+        },
+        emphasis: {
+          label: {
+            show: true
+          }
+        },
+        data: mapData
+      }
+    ]
+  };
+
+  // 处理图表缩放
+  const echartsRef = useRef(null);
+  
+  const handleMapZoom = (type) => {
+    if (echartsRef.current) {
+      const echartInstance = echartsRef.current.getEchartsInstance();
+      // 获取当前所有的配置项
+      const currentOption = echartInstance.getOption();
+      let currentZoom = 1;
+      
+      // 尝试获取当前的 zoom 值，如果没有则默认为 1
+      if (currentOption.series && currentOption.series[0] && currentOption.series[0].zoom) {
+        currentZoom = currentOption.series[0].zoom;
+      }
+      
+      if (type === 'in') {
+        echartInstance.setOption({
+          series: [{
+            zoom: currentZoom * 1.2
+          }]
+        });
+      } else if (type === 'out') {
+        echartInstance.setOption({
+          series: [{
+            zoom: currentZoom * 0.8
+          }]
+        });
+      } else if (type === 'restore') {
+        // 重置时需要把 zoom 和 center(拖拽产生的偏移) 都清除
+        echartInstance.setOption({
+          series: [{
+            zoom: 1,
+            center: null
+          }]
+        });
+      }
+    }
+  };
 
   // 准备域名数据
   const domainData = currentStats.topDomains ? currentStats.topDomains.map(item => ({
@@ -919,6 +1008,32 @@ function Dashboard({ statistics, logs = [], loadMode = 'full', onFilterChange = 
                 />
               </BarChart>
             </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* 中国地图分布 */}
+        <div className="chart-card full-width">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3><Map size={20} /> 来源地域分布图</h3>
+            <div className="map-controls">
+              <button className="map-btn" onClick={() => handleMapZoom('in')} title="放大"><ZoomIn size={16}/></button>
+              <button className="map-btn" onClick={() => handleMapZoom('out')} title="缩小"><ZoomOut size={16}/></button>
+              <button className="map-btn" onClick={() => handleMapZoom('restore')} title="还原"><Maximize size={16}/></button>
+            </div>
+          </div>
+          <p className="chart-hint"><Lightbulb size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px', marginTop: '-2px'}}/> 颜色越深代表请求数越多，可鼠标拖拽，可通过右上角按钮或鼠标滚轮缩放</p>
+          {mapData.length === 0 ? (
+            <div className="no-data-message">暂无地图数据</div>
+          ) : (
+            <div style={{ width: '100%', height: '450px' }}>
+              <ReactECharts
+                ref={echartsRef}
+                option={mapOption}
+                style={{ height: '100%', width: '100%' }}
+                notMerge={true}
+                lazyUpdate={true}
+              />
+            </div>
           )}
         </div>
 
